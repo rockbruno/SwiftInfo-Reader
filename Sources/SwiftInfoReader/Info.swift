@@ -8,7 +8,7 @@ struct ProviderInfo: Hashable {
 
 struct Run: Hashable {
     let runDescription: String
-    let value: Int
+    let value: Double
     let tooltip: String
     let color: String
 }

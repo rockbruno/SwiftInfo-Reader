@@ -2,7 +2,7 @@ import Foundation
 
 struct Chart {
     func generate(info: [ProviderInfo]) -> String {
-        let divs = info.map { #"<div id="\#($0.key)"></div>"# }.joined(separator: "\n")
+        let divs = info.map { #"<div id="\#($0.key)"></div>"# }.joined(separator: "<br>\n")
         let methodNames = info.map { "\($0.key)();" }.joined(separator: "\n")
         let methods = info.map(method).joined(separator: "\n")
         return """
@@ -38,7 +38,9 @@ struct Chart {
                 \(rows)
             ]);
             var options = {
-                title: '\(info.description)'
+                title: '\(info.description)',
+                lineWidth: 4,
+                pointsVisible: true
             };
 
             var chart = new google.visualization.LineChart(document.getElementById('\(info.key)'));

@@ -2,45 +2,60 @@ import Foundation
 
 final class Generator {
 
+    let chart: Chart
     let jsonPath: String
 
     init(jsonPath: String) {
+        self.chart = Chart()
         self.jsonPath = jsonPath
     }
 
     func generate() {
         let json = getJson()
         let info = getInfo(fromJson: json)
-        let html = Chart().generate(info: info)
+        let html = chart.generate(info: info)
         save(html: html)
     }
 
     func getJson() -> [String: Any] {
         let jsonUrl = URL(fileURLWithPath: jsonPath)
-        let jsonData = try! Data(contentsOf: jsonUrl)
-        return try! JSONSerialization.jsonObject(with: jsonData, options: []) as! [String: Any]
+        do {
+            let jsonData = try Data(contentsOf: jsonUrl)
+            let object = try JSONSerialization.jsonObject(with: jsonData, options: [])
+            guard let json = object as? [String: Any] else {
+                fail("Failed to cast \(object) to a Dictionary.")
+            }
+            return json
+        } catch {
+            fail(error.localizedDescription)
+        }
     }
 
     func getInfo(fromJson json: [String: Any]) -> [ProviderInfo] {
         guard let data = json["data"] as? [[String: Any]] else {
-            fatalError()
+            fail("Failed to get `data`: It looks like the JSON isn't in the right format.")
         }
         let rawInfo = data.flatMap { data -> [ProviderInfo] in
             let hardcodedKey = "swiftinfo_run_description_key"
-            let runKey = data[hardcodedKey] as! String
+            let runKey = data[hardcodedKey] as? String ?? "Unknown key"
             return data.compactMap { dict -> ProviderInfo? in
                 let key = dict.key
                 guard key != hardcodedKey else {
                     return nil
                 }
-                let valueDict = dict.value as! [String: Any]
-                let summary = valueDict["summary"] as! [String: Any]
-                let color = summary["color"] as! String
-                let tooltip = summary["text"] as! String
-                let data = valueDict["data"] as! [String: Any]
-                let description = data["description"] as! String
+                guard let valueDict = dict.value as? [String: Any] else {
+                    fail("Data output value isn't a dictionary!")
+                }
+                let summary = valueDict["summary"] as? [String: Any] ?? [:]
+                let color = summary["color"] as? String ?? "#000000"
+                let tooltip = summary["text"] as? String ?? "No summary."
+                let data = valueDict["data"] as? [String: Any] ?? [:]
+                let description = data["description"] as? String ?? "No description."
+                guard let value = data.compactMap({ $0.value as? Double }).first else {
+                    fail("Can't plot \(key) as it has no numeric properties.")
+                }
                 let run = Run(runDescription: runKey,
-                              value: 10,
+                              value: value,
                               tooltip: tooltip,
                               color: color)
                 return ProviderInfo(key: key, description: description, runs: [run])
@@ -57,7 +72,19 @@ final class Generator {
     }
 
     func save(html: String) {
-       print(html)
-        //page/public/index.html
+        let url = URL(fileURLWithPath: jsonPath)
+        let folderToSave = url.deletingLastPathComponent()
+                              .appendingPathComponent("page")
+                              .appendingPathComponent("public")
+        do {
+            try FileManager.default.createDirectory(atPath: folderToSave.relativePath,
+                                                    withIntermediateDirectories: true,
+                                                    attributes: nil)
+            let indexUrl = folderToSave.appendingPathComponent("index.html")
+            try html.write(to: indexUrl, atomically: true, encoding: .utf8)
+            print("Page generated succesfully at \(folderToSave.relativePath)!")
+        } catch {
+            fail(error.localizedDescription)
+        }
     }
 }
