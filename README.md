@@ -9,3 +9,7 @@ SwiftInfo-Reader is a tool that transforms the JSON output of [SwiftInfo](https:
 ## Usage
 
 `SwiftInfoReader -json {path to SwiftInfoOutput.json}`
+
+## Notes
+
+As this is still under heavy development, it is only guaranteed to work with the default SwiftInfo providers.
