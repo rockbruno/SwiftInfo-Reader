@@ -37,10 +37,14 @@ final class Generator {
         }
         let rawInfo = data.flatMap { data -> [ProviderInfo] in
             let hardcodedKey = "swiftinfo_run_description_key"
+            let hardcodedInfoKey = "swiftinfo_run_project_info"
             let runKey = data[hardcodedKey] as? String ?? "Unknown key"
             return data.compactMap { dict -> ProviderInfo? in
                 let key = dict.key
                 guard key != hardcodedKey else {
+                    return nil
+                }
+                guard key != hardcodedInfoKey else {
                     return nil
                 }
                 guard let valueDict = dict.value as? [String: Any] else {
