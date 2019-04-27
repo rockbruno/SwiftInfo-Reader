@@ -36,30 +36,44 @@ final class Generator {
             fail("Failed to get `data`: It looks like the JSON isn't in the right format.")
         }
         let rawInfo = data.flatMap { data -> [ProviderInfo] in
-            let hardcodedKey = "swiftinfo_run_description_key"
             let hardcodedInfoKey = "swiftinfo_run_project_info"
-            let runKey = data[hardcodedKey] as? String ?? "Unknown key"
+            let infoDict = data[hardcodedInfoKey] as? [String: Any]
             return data.compactMap { dict -> ProviderInfo? in
                 let key = dict.key
-                guard key != hardcodedKey else {
-                    return nil
-                }
                 guard key != hardcodedInfoKey else {
                     return nil
                 }
+                guard key != "swiftinfo_run_description_key" else {
+                    return nil
+                }
                 guard let valueDict = dict.value as? [String: Any] else {
-                    fail("Data output value isn't a dictionary!")
+                    fail("Data output value from \(key) isn't a dictionary! \(dict.value)")
                 }
                 let summary = valueDict["summary"] as? [String: Any] ?? [:]
                 let color = summary["color"] as? String ?? "#000000"
                 let tooltip = summary["text"] as? String ?? "No summary."
                 let data = valueDict["data"] as? [String: Any] ?? [:]
                 let description = data["description"] as? String ?? "No description."
-                guard let value = data.compactMap({ $0.value as? Double }).first else {
-                    fail("Can't plot \(key) as it has no numeric properties.")
+                guard let value = summary["numericValue"] as? Float else {
+                    print("Ignoring a \(key) entry as it has no Float numericValue. This is likely because this SwiftInfo-Reader version doesn't support the SwiftInfo version that generated this entry.")
+                    return nil
                 }
-                let run = Run(runDescription: runKey,
+                let stringValue = summary["stringValue"] as? String ?? "\(value)"
+                //
+                let versionString = (infoDict?["versionString"] as? String) ?? "?"
+                let buildNumber = (infoDict?["buildNumber"] as? String) ?? "?"
+                let target = (infoDict?["target"] as? String) ?? "?"
+                let projectDescription = (infoDict?["description"] as? String) ?? "?"
+                let timestamp = infoDict?["timestamp"] as? Double
+                let project = Xcodeproj(target: target,
+                                        versionString: versionString,
+                                        buildNumber: buildNumber,
+                                        description: projectDescription,
+                                        timestamp: timestamp)
+                //
+                let run = Run(project: project,
                               value: value,
+                              stringValue: stringValue,
                               tooltip: tooltip,
                               color: color)
                 return ProviderInfo(key: key, description: description, runs: [run])
@@ -68,8 +82,8 @@ final class Generator {
         var mergedInfo = [String: ProviderInfo]()
         rawInfo.forEach {
             let current = mergedInfo[$0.key]
-            mergedInfo[$0.key] = ProviderInfo(key: $0.key,
-                                              description: $0.description,
+            mergedInfo[$0.key] = ProviderInfo(key: current?.key ?? $0.key,
+                                              description: current?.description ?? $0.description,
                                               runs: $0.runs + (current?.runs ?? []))
         }
         return mergedInfo.map { $0.value }

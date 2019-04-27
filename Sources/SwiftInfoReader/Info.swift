@@ -7,8 +7,17 @@ struct ProviderInfo: Hashable {
 }
 
 struct Run: Hashable {
-    let runDescription: String
-    let value: Double
+    let project: Xcodeproj
+    let value: Float
+    let stringValue: String
     let tooltip: String
     let color: String
+}
+
+struct Xcodeproj: Hashable {
+    let target: String
+    let versionString: String
+    let buildNumber: String
+    let description: String
+    let timestamp: TimeInterval?
 }
